@@ -11,8 +11,9 @@ static pthread_mutex_t mutex;
 static OnPacketReceived_callback queryCallback = NULL;
 static OnError_callback errorCallback = NULL;
 
-static struct sockaddr_in __queryAddress;
-static int __serverFD = -1;
+static struct sockaddr_in __serverAddress;
+static int __listenerFD = -1;
+static int __clientFD = -1;
 
 static int __initialized = 0;
 
@@ -34,7 +35,7 @@ int sampquery_server_init(const char *hostname, unsigned short port)
     addr.sin_port = htons(port);
     socklen_t len = sizeof(addr);
 
-    __queryAddress = addr;
+    __serverAddress = addr;
 
     int fd = socket(AF_INET, SOCK_DGRAM, 0);
     if (fd < 0)
@@ -47,7 +48,7 @@ int sampquery_server_init(const char *hostname, unsigned short port)
         return 0;
     }
 
-    __serverFD = fd;
+    __listenerFD = fd;
 
     int r = bind(fd, (struct sockaddr *)&addr, len);
     if (r < 0)
@@ -70,7 +71,7 @@ void *sampquery_server_listen_thread(void *args)
         struct sockaddr_in clientaddr;
         socklen_t len = sizeof(clientaddr);
         char buffer[1024];
-        ssize_t bytes_received = recvfrom(__serverFD, buffer, 1024, 0, (struct sockaddr *)&clientaddr, &len);
+        ssize_t bytes_received = recvfrom(__listenerFD, buffer, 1024, 0, (struct sockaddr *)&clientaddr, &len);
         if (bytes_received < 0)
         {
             pthread_mutex_lock(&mutex);
@@ -137,9 +138,8 @@ int sampquery_callback_onerror(OnError_callback callback)
     return 1;
 }
 
-int sampquery_new_query(struct sampquery_packet_query *packet, enum E_SAMPQUERY_PACKET type)
+int sampquery_new_query(struct sampquery_packet_query *packet, struct sockaddr_in syn, enum E_SAMPQUERY_PACKET type)
 {
-    struct sockaddr_in syn = __queryAddress;
     strncpy(packet->SAMP, "SAMP", 4);
     in_addr_t iaddr = syn.sin_addr.s_addr;
     memcpy(packet->ipbytes, (unsigned char *)&iaddr, 4);
@@ -223,9 +223,9 @@ int sampquery_make_packet(char *buffer, void *packet, enum E_SAMPQUERY_PACKET ty
     return 1;
 }
 
-int sampquery_send(const char *buffer, struct sockaddr *address, socklen_t len)
+int sampquery_response(const char *buffer, struct sockaddr *address, socklen_t len)
 {
-    ssize_t bytes_sent = sendto(__serverFD, buffer, SAMPQUERY_OUTGOING_LEN, 0, address, len);
+    ssize_t bytes_sent = sendto(__listenerFD, buffer, SAMPQUERY_OUTGOING_LEN, 0, address, len);
 
     if (bytes_sent < 0)
     {
@@ -233,4 +233,9 @@ int sampquery_send(const char *buffer, struct sockaddr *address, socklen_t len)
     }
 
     return 1;
+}
+
+struct sockaddr_in sampquery_serverAddr(void)
+{
+    return __serverAddress;
 }

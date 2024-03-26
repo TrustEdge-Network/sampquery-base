@@ -39,16 +39,26 @@ int sampquery_server_init(const char *hostname, unsigned short port);
 int sampquery_server_listen(void);
 int sampquery_server_stop(void);
 
+// callbacks - We like to modify at maximum these packets...
+int sampquery_callback_onqueryresponse(OnPacketReceived_callback callback);
 int sampquery_callback_onpacketreceived(OnPacketReceived_callback callback);
 int sampquery_callback_onerror(OnError_callback callback);
 
-int sampquery_new_query(struct sampquery_packet_query *packet, enum E_SAMPQUERY_PACKET);
-int sampquery_make_query(char *buffer, struct sampquery_packet_query packet);
-
+// Packets
 int sampquery_new_packet_info(struct sampquery_packet_info *packet, const char *hostname, const char *gamemode, unsigned char isPassworded,
                               const char *language, unsigned short maxPlayers, unsigned short playerCount);
 
-int sampquery_make_packet(char *buffer, void *packet, enum E_SAMPQUERY_PACKET type);
+// Aux Funcs - Base packets, modify if u need more features.
+int sampquery_write_packet_buffer(char *buffer, void *packet, enum E_SAMPQUERY_PACKET type);
+int sampquery_response(const char *buffer, struct sockaddr *address, socklen_t len);
 
-int sampquery_send(const char *buffer, struct sockaddr *address, socklen_t len);
+// Query writers
+int sampquery_new_query_packet(struct sampquery_packet_query *packet, struct sockaddr_in syn, enum E_SAMPQUERY_PACKET);
+int sampquery_write_query_buffer(char *buffer, struct sampquery_packet_query packet);
+
+// Query sender
+int sampquery_query(struct sockaddr_in syn, enum E_SAMPQUERY_PACKET);
+int sampquery_resolve_response(const char *buffer, void *packet, enum E_SAMPQUERY_PACKET);
+
+struct sockaddr_in sampquery_serverAddr(void);
 #endif

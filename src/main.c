@@ -7,7 +7,8 @@ void OnQuery(struct sockaddr_in addr, enum E_SAMPQUERY_PACKET type, char *buffer
 {
     // making sampquery query packet
     struct sampquery_packet_query querypkt;
-    sampquery_new_query(&querypkt, type);
+    const struct sockaddr_in syn = sampquery_serverAddr();
+    sampquery_new_query(&querypkt, syn, type);
 
     // creating the response packet.
     char newPacket[SAMPQUERY_OUTGOING_LEN];
@@ -22,7 +23,7 @@ void OnQuery(struct sockaddr_in addr, enum E_SAMPQUERY_PACKET type, char *buffer
 
     // sending the response.
     socklen_t len = sizeof(addr);
-    sampquery_send(newPacket, (struct sockaddr *)&addr, len);
+    sampquery_response(newPacket, (struct sockaddr *)&addr, len);
 }
 
 void OnError(int err)
